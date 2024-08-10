@@ -1,13 +1,11 @@
 ## Setup
 
-For users that wish to make use of Docker or another container orchestration platform, see [this document](/documentation/DOCKER.md) first.
-
 1. Clone the repository and install the dependencies:
 
 ```bash
-git clone https://github.com/bghira/SimpleTuner --branch release
+git clone https://github.com/Njbx/SimpleTuner --branch release
 python -m venv .venv
-pip3 install -U poetry pip
+pip install -r requirements.txt
 ```
 
 > ℹ️ You can use your own custom venv path by setting `export VENV_PATH=/path/to/.venv` in your `config.env` file.
