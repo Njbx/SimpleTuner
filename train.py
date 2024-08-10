@@ -96,6 +96,13 @@ from diffusers.utils import (
 from diffusers.utils.import_utils import is_xformers_available
 from transformers.utils import ContextManagers
 
+from helpers.models.flux import (
+    prepare_latent_image_ids,
+    pack_latents,
+    unpack_latents,
+    update_flux_schedule_to_fast,
+)
+
 # Will error if the minimal version of diffusers is not installed. Remove at your own risks.
 check_min_version("0.27.0.dev0")
 
@@ -272,12 +279,6 @@ def main():
         StateTracker.set_model_type("sd3")
     if args.flux:
         StateTracker.set_model_type("flux")
-        from helpers.models.flux import (
-            prepare_latent_image_ids,
-            pack_latents,
-            unpack_latents,
-            update_flux_schedule_to_fast,
-        )
     if args.pixart_sigma:
         StateTracker.set_model_type("pixart_sigma")
     if args.legacy:
@@ -386,6 +387,15 @@ def main():
             from helpers.publishing.huggingface import HubManager
 
             hub_manager = HubManager(config=args)
+        try:
+            import huggingface_hub
+
+            StateTracker.set_hf_user(huggingface_hub.whoami())
+            logger.info(
+                f"Logged into Hugging Face Hub as '{StateTracker.get_hf_username()}'"
+            )
+        except Exception as e:
+            logger.error(f"Failed to log into Hugging Face Hub: {e}")
 
     vae_path = (
         args.pretrained_model_name_or_path
@@ -652,16 +662,6 @@ def main():
 
     # Create a DataBackend, so that we can access our dataset.
     prompt_handler = None
-    if not args.disable_compel and not any([args.sd3, args.pixart_sigma, args.kolors]):
-        # Only CLIP works with prompt weighting.
-        prompt_handler = PromptHandler(
-            args=args,
-            text_encoders=[text_encoder_1, text_encoder_2],
-            tokenizers=[tokenizer_1, tokenizer_2],
-            accelerator=accelerator,
-            model_type=StateTracker.get_model_type(),
-        )
-
     try:
         if webhook_handler is not None:
             webhook_handler.send(
@@ -918,6 +918,10 @@ def main():
             if torch.backends.mps.is_available() and args.lora_init_type == "loftq":
                 logger.error(
                     "Apple MPS cannot make use of LoftQ initialisation. Overriding to 'default'."
+                )
+            elif is_quantized and args.lora_init_type == "loftq":
+                logger.error(
+                    "LoftQ initialisation is not supported with quantised models. Overriding to 'default'."
                 )
             else:
                 lora_initialisation_style = (
@@ -1591,24 +1595,6 @@ def main():
                     "allow_val_change": True,
                 }
             },
-        )
-    if "quanto" in args.base_model_precision:
-        try:
-            from optimum.quanto import QTensor
-        except ImportError as e:
-            raise ImportError(
-                f"To use Quanto, please install the optimum library: `pip install optimum-quanto`: {e}"
-            )
-        from helpers.training.quantisation import quantoise
-
-        # we'll quantise pretty much everything but the adapter, if we execute this here.
-        quantoise(
-            unet=unet,
-            transformer=transformer,
-            text_encoder_1=text_encoder_1,
-            text_encoder_2=text_encoder_2,
-            text_encoder_3=text_encoder_3,
-            args=args,
         )
 
     logger.info(
