@@ -3,7 +3,7 @@
 1. Clone the repository and install the dependencies:
 
 ```bash
-git clone https://github.com/Njbx/SimpleTuner --branch release
+git clone https://github.com/Njbx/SimpleTuner.git
 python -m venv .venv
 pip install -r requirements.txt
 ```
