@@ -4,7 +4,8 @@
 
 ```bash
 git clone https://github.com/Njbx/SimpleTuner.git
-python -m venv .venv
+cd SimpleTuner
+virtualenv .venv
 pip install -r requirements.txt
 ```
 
